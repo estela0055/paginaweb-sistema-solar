@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import UploadModal from './UploadModal'; // Añade esta línea
+import LoginModal from './LoginModal';
 
-function Community() {
+function Community({ usuario, setPagina, onLoginExitoso }) {
   // 1. Ahora 'simulaciones' empieza como una lista vacía []
   const [simulaciones, setSimulaciones] = useState([]);
   const [cargando, setCargando] = useState(true);
-
+ const [modalSubirAbierto, setModalSubirAbierto] = useState(false);
+  const [modalLoginAbierto, setModalLoginAbierto] = useState(false);
   // 2. useEffect: Esto se ejecuta UNA SOLA VEZ cuando se abre esta pestaña
   useEffect(() => {
     // Función para ir a buscar los datos al backend
     const obtenerDatos = async () => {
       try {
         // Llamamos a la dirección de tu servidor Node.js
-        const respuesta = await fetch('http://localhost:3000/api/simulaciones');
+        const respuesta = await fetch('http://127.0.0.1:3000/api/simulaciones');
         const datosReales = await respuesta.json();
         
         // Guardamos los datos en la memoria de React y quitamos el "Cargando"
@@ -31,17 +34,29 @@ function Community() {
     const fecha = new Date(fechaISO);
     return `${fecha.getDate()}/${fecha.getMonth() + 1}/${fecha.getFullYear()}`;
   };
-
+const manejarClickSubir = () => {
+    if (usuario) {
+      setModalSubirAbierto(true);
+    } else {
+      // 4. Si no hay usuario, ABRIMOS EL MODAL en vez de cambiar de página
+      setModalLoginAbierto(true); 
+    }
+  };
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-white p-8 font-sans">
       
-      {/* CABECERA */}
+     {/* CABECERA */}
       <div className="flex justify-between items-start mb-8">
         <div>
           <h1 className="text-3xl font-bold mb-2">Simulaciones de la Comunidad</h1>
           <p className="text-gray-400">Explora y descarga las simulaciones creadas por usuarios</p>
         </div>
-        <button className="bg-[#4f39f6] hover:bg-[#402de6] transition px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2">
+        
+        {/* 3. CAMBIAMOS EL BOTÓN para que use nuestra nueva función */}
+        <button 
+          onClick={manejarClickSubir} 
+          className="bg-[#4f39f6] hover:bg-[#402de6] transition px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2"
+        >
           <span>↑</span> Subir Simulación
         </button>
       </div>
@@ -111,6 +126,19 @@ function Community() {
           ))}
         </div>
       )}
+      <UploadModal 
+        isOpen={modalSubirAbierto} 
+        onClose={() => setModalSubirAbierto(false)} 
+      />
+
+      <LoginModal
+        isOpen={modalLoginAbierto}
+        onClose={() => setModalLoginAbierto(false)}
+        // Si le da a registrarse, le mandamos a la página de registro
+        onIrRegistro={() => setPagina('registro')} 
+        // Si se loguea bien, le avisamos a App.jsx para que ponga su nombre arriba
+        onLoginExitoso={onLoginExitoso}
+      />
     </div>
   );
 }

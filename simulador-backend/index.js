@@ -28,7 +28,6 @@ app.get('/', (req, res) => {
 // 6. Creamos una ruta para probar la base de datos
 app.get('/test-db', async (req, res) => {
   try {
-    // Intentamos hacer una consulta sencilla a la base de datos
     const result = await pool.query('SELECT NOW() AS hora_actual');
     res.json({
       mensaje: '¡Conexión a la base de datos exitosa! 🎉',
@@ -40,20 +39,10 @@ app.get('/test-db', async (req, res) => {
   }
 });
 
-// 7. Encendemos el servidor para que empiece a escuchar
-app.listen(puerto, () => {
-  console.log(`\n========================================`);
-  console.log(`🚀 Servidor backend encendido y escuchando en http://localhost:${puerto}`);
-  console.log(`========================================\n`);
-});
-
 // 8. Ruta para obtener todas las simulaciones de la comunidad
 app.get('/api/simulaciones', async (req, res) => {
   try {
-    // Le pedimos a la base de datos TODAS las simulaciones, ordenadas por las más recientes
     const result = await pool.query('SELECT * FROM simulaciones ORDER BY fecha_publicacion DESC');
-    
-    // El servidor responde enviando esas filas en formato JSON
     res.json(result.rows);
   } catch (error) {
     console.error('Error obteniendo las simulaciones:', error);
@@ -63,20 +52,15 @@ app.get('/api/simulaciones', async (req, res) => {
 
 // Ruta para registrar un nuevo usuario
 app.post('/api/registro', async (req, res) => {
-  // 1. Recogemos los datos que nos envía React
   const { usuario, correo, contrasena } = req.body;
-
   try {
-    // 2. BUSCAMOS DUPLICADOS: Preguntamos a la base de datos si ya existe ese nombre o correo
     const busqueda = await pool.query(
       'SELECT * FROM usuarios WHERE nombre_usuario = $1 OR correo_electronico = $2',
       [usuario, correo]
     );
 
-    // 3. Si encontramos algo, averiguamos qué es lo que está repetido y devolvemos un error
     if (busqueda.rows.length > 0) {
       const usuarioEncontrado = busqueda.rows[0];
-      
       if (usuarioEncontrado.correo_electronico === correo) {
         return res.status(400).json({ error: 'Este correo electrónico ya está registrado.' });
       }
@@ -85,16 +69,100 @@ app.post('/api/registro', async (req, res) => {
       }
     }
 
-    // 4. Si todo está libre, guardamos al nuevo usuario en la base de datos
     await pool.query(
       'INSERT INTO usuarios (nombre_usuario, correo_electronico, contrasena) VALUES ($1, $2, $3)',
       [usuario, correo, contrasena]
     );
-
     res.status(201).json({ mensaje: '¡Cuenta creada con éxito!' });
 
   } catch (error) {
     console.error('Error al registrar usuario:', error);
     res.status(500).json({ error: 'Hubo un problema interno en el servidor.' });
   }
+});
+
+// Ruta para Iniciar Sesión
+app.post('/api/login', async (req, res) => {
+  const { usuario, contrasena } = req.body;
+  try {
+    const busqueda = await pool.query(
+      'SELECT * FROM usuarios WHERE nombre_usuario = $1',
+      [usuario]
+    );
+
+    if (busqueda.rows.length === 0) {
+      return res.status(401).json({ error: 'Usuario no encontrado. Comprueba el nombre.' });
+    }
+
+    const usuarioEncontrado = busqueda.rows[0];
+    
+    if (usuarioEncontrado.contrasena !== contrasena) {
+      return res.status(401).json({ error: 'Contraseña incorrecta.' });
+    }
+
+    res.status(200).json({ 
+      mensaje: '¡Inicio de sesión exitoso!',
+      usuario: {
+        id: usuarioEncontrado.id,
+        nombre: usuarioEncontrado.nombre_usuario,
+        correo: usuarioEncontrado.correo_electronico
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al iniciar sesión:', error);
+    res.status(500).json({ error: 'Hubo un problema interno en el servidor.' });
+  }
+});
+// Ruta para actualizar el perfil del usuario
+app.put('/api/usuarios/actualizar', async (req, res) => {
+  // 1. Recibimos los datos que nos manda React
+  const { id, nombre, pronombres, contrasenaActual, nuevaContrasena } = req.body;
+
+  try {
+    // 2. Buscamos al usuario en la base de datos usando su ID
+    const busqueda = await pool.query('SELECT * FROM usuarios WHERE id = $1', [id]);
+    
+    if (busqueda.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado en la base de datos.' });
+    }
+
+    const usuarioDB = busqueda.rows[0];
+    let contrasenaFinal = usuarioDB.contrasena;
+
+    // 3. Si el usuario quiere cambiar la contraseña, verificamos la antigua primero
+    if (nuevaContrasena) {
+      if (contrasenaActual !== usuarioDB.contrasena) {
+        return res.status(401).json({ error: 'La contraseña actual no es correcta.' });
+      }
+      contrasenaFinal = nuevaContrasena; // Si es correcta, preparamos la nueva
+    }
+
+    // 4. Guardamos los cambios en la base de datos
+    await pool.query(
+      'UPDATE usuarios SET nombre_usuario = $1, pronombres = $2, contrasena = $3 WHERE id = $4',
+      [nombre, pronombres, contrasenaFinal, id]
+    );
+
+    // 5. Devolvemos los datos actualizados a React
+    res.status(200).json({ 
+      mensaje: '¡Datos actualizados correctamente!',
+      usuario: {
+        id: id,
+        nombre: nombre,
+        correo: usuarioDB.correo_electronico,
+        pronombres: pronombres
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al actualizar perfil:', error);
+    res.status(500).json({ error: 'Error interno al guardar los datos.' });
+  }
+});
+// 7. ENCENDEMOS EL SERVIDOR AL FINAL DEL TODO (¡Muy importante!)
+app.listen(puerto, () => {
+  console.log(`\n========================================`);
+  console.log(`🚀 Servidor backend encendido y escuchando en http://localhost:${puerto}`);
+  console.log(`========================================\n`);
 });

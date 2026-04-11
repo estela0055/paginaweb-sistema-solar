@@ -1,0 +1,26 @@
+{
+  "name": "paginaweb",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd simulador-backend && node index.js",
+    "frontend": "cd simulador-web && npm run dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/estela0055/paginaweb-sistema-solar.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/estela0055/paginaweb-sistema-solar/issues"
+  },
+  "homepage": "https://github.com/estela0055/paginaweb-sistema-solar#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

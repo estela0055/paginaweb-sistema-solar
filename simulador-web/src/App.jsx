@@ -1,47 +1,73 @@
 import React, { useState } from 'react';
 import Community from './Community';
 import Login from './Login';
-import Register from './Register'; // 1. Importamos la nueva pantalla
+import Register from './Register';
+import Settings from './Settings';
 
 function App() {
   const [paginaActiva, setPaginaActiva] = useState('inicio');
+  
+  // NUEVA MEMORIA: Para saber quién está conectado (empieza en 'null' = nadie)
+  const [usuarioLogueado, setUsuarioLogueado] = useState(null);
 
   // --- RUTAS DE LA APLICACIÓN ---
 
-  // Pantalla de Login
   if (paginaActiva === 'login') {
     return (
       <Login 
         onVolver={() => setPaginaActiva('inicio')} 
-        onIrRegistro={() => setPaginaActiva('registro')} // Conectado al registro
+        onIrRegistro={() => setPaginaActiva('registro')}
+        // Qué hacer si el login va bien:
+        onLoginExitoso={(datosUsuario) => {
+          setUsuarioLogueado(datosUsuario); // Guardamos quién es
+          setPaginaActiva('inicio');        // Le mandamos a la portada
+        }}
       />
     );
   }
 
-  // Pantalla de Registro
   if (paginaActiva === 'registro') {
     return (
       <Register 
         onVolver={() => setPaginaActiva('inicio')} 
-        onIrLogin={() => setPaginaActiva('login')} // Conectado al login
+        onIrLogin={() => setPaginaActiva('login')} 
       />
     );
   }
-
-  // Pantalla de la Comunidad
-  if (paginaActiva === 'comunidad') {
+if (paginaActiva === 'configuracion') {
     return (
-      <div className="relative">
-        <button 
-          onClick={() => setPaginaActiva('inicio')}
-          className="absolute top-8 text-sm left-8 bg-[#1a1f35] border border-white/10 hover:bg-white/5 text-white/70 hover:text-white px-4 py-2 rounded-lg flex items-center gap-2 z-10 transition"
-        >
-          <span>←</span> Volver al inicio
-        </button>
-        <Community />
-      </div>
+      <Settings 
+        usuario={usuarioLogueado}
+        onVolver={() => setPaginaActiva('inicio')}
+        onCerrarSesion={() => {
+          setUsuarioLogueado(null);
+          setPaginaActiva('inicio');
+        }}
+        // ¡NUEVO! Si cambia su nombre, actualizamos la memoria de App.jsx
+        onUsuarioActualizado={(nuevosDatos) => setUsuarioLogueado(nuevosDatos)}
+      />
     );
   }
+// En App.jsx, dentro de la condición if (paginaActiva === 'comunidad')
+if (paginaActiva === 'comunidad') {
+  return (
+    <div className="relative">
+      <button 
+        onClick={() => setPaginaActiva('inicio')}
+        className="absolute top-8 text-sm left-8 bg-[#1a1f35] border border-white/10 hover:bg-white/5 text-white/70 hover:text-white px-4 py-2 rounded-lg flex items-center gap-2 z-10 transition"
+      >
+        <span>←</span> Volver al inicio
+      </button>
+      
+    {/* PASAMOS LAS PROPS: el usuario actual y la función para navegar */}
+      <Community 
+        usuario={usuarioLogueado} 
+        setPagina={setPaginaActiva} 
+        onLoginExitoso={(datosUsuario) => setUsuarioLogueado(datosUsuario)} 
+      />
+    </div>
+  );
+}
 
   // --- PANTALLA PRINCIPAL (INICIO) ---
   return (
@@ -49,16 +75,31 @@ function App() {
       
       <nav className="flex justify-between items-center px-8 py-4 border-b border-white/10">
         
-        {/* Botón de Iniciar Sesión */}
-        <button 
-          onClick={() => setPaginaActiva('login')}
-          className="bg-transparent border border-white/20 hover:bg-white/10 text-white px-5 py-2.5 rounded-lg font-medium transition flex items-center gap-2"
-        >
-          <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-          </svg>
-          Iniciar Sesión
-        </button>
+       {/* MAGIA AQUÍ: Si hay usuario logueado, enseñamos su nombre y su icono es un botón a configuración */}
+     {usuarioLogueado ? (
+       <div 
+         onClick={() => setPaginaActiva('configuracion')}
+         className="flex items-center gap-3 cursor-pointer hover:bg-white/5 p-2 rounded-xl transition"
+       >
+          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center font-bold border border-white/20">
+            {usuarioLogueado.nombre.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="text-sm font-bold text-white">{usuarioLogueado.nombre}</p>
+            <p className="text-xs text-[#3b82f6]">Mi Cuenta ⚙️</p>
+          </div>
+       </div>
+     ) : (
+       <button
+            onClick={() => setPaginaActiva('login')}
+            className="bg-transparent border border-white/20 hover:bg-white/10 text-white px-5 py-2.5 rounded-lg font-medium transition flex items-center gap-2"
+          >
+            <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            </svg>
+            Iniciar Sesión
+          </button>
+        )}
 
         <div className="flex items-center gap-6 text-sm font-medium">
           <button onClick={() => setPaginaActiva('comunidad')} className="flex items-center gap-2 hover:text-gray-300 transition">
@@ -71,6 +112,7 @@ function App() {
         </div>
       </nav>
 
+      {/* Resto del diseño central igual... */}
       <main className="flex-grow flex flex-col items-center justify-center text-center px-4 -mt-10">
         <h1 className="text-5xl md:text-7xl font-bold tracking-widest flex items-center justify-center mb-6">
           SISTEMA S

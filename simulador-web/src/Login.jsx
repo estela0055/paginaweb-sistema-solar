@@ -1,18 +1,74 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-function Login({ onVolver, onIrRegistro }) {
+// Añadimos una nueva función "onLoginExitoso" que nos pasará App.jsx
+function Login({ onVolver, onIrRegistro, onLoginExitoso }) {
+  // 1. Memoria para los campos del formulario
+  const [formData, setFormData] = useState({
+    usuario: '',
+    contrasena: ''
+  });
+
+  // Memoria para mostrar errores
+  const [mensajeError, setMensajeError] = useState('');
+  const [cargando, setCargando] = useState(false);
+
+  // 2. Actualizamos la memoria cuando el usuario teclea
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+    setMensajeError(''); // Limpiamos errores si el usuario cambia el texto
+  };
+
+  // 3. Lo que ocurre al pulsar el botón "Iniciar Sesión"
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // Evita recargar la página
+    setMensajeError('');
+    
+    // Validación básica: que los campos no estén vacíos
+    if (!formData.usuario || !formData.contrasena) {
+      return setMensajeError('Por favor, ingresa tu usuario y contraseña.');
+    }
+
+    setCargando(true); // Ponemos el botón en modo "cargando"
+
+    try {
+      // 4. Llamamos a nuestro servidor Node.js (al puerto 3000)
+      const respuesta = await fetch('http://127.0.0.1:3000/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usuario: formData.usuario,
+          contrasena: formData.contrasena
+        })
+      });
+
+      const datos = await respuesta.json();
+
+      // Si el servidor nos devuelve un error (ej. contraseña incorrecta)
+      if (!respuesta.ok) {
+        setMensajeError(datos.error);
+        setCargando(false);
+      } else {
+        // ¡Si todo va bien! El servidor nos ha dejado pasar.
+        // Llamamos a la función que nos mandará de vuelta al inicio, 
+        // y le pasamos los datos del usuario.
+        onLoginExitoso(datos.usuario);
+      }
+    } catch (error) {
+      setMensajeError('Error al conectar con el servidor.');
+      setCargando(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0e17] text-white flex flex-col items-center justify-center font-sans relative">
       
-      {/* Botón flotante para volver atrás (opcional, pero útil para probar) */}
-      <button 
-        onClick={onVolver}
-        className="absolute top-8 left-8 text-sm bg-white/5 border border-white/10 hover:bg-white/10 text-white/70 hover:text-white px-4 py-2 rounded-lg transition"
-      >
+      <button onClick={onVolver} className="absolute top-8 left-8 text-sm bg-white/5 border border-white/10 hover:bg-white/10 text-white/70 hover:text-white px-4 py-2 rounded-lg transition">
         <span>←</span> Volver al inicio
       </button>
 
-      {/* TÍTULO PRINCIPAL (Igual que en la portada) */}
       <h1 className="text-4xl md:text-5xl font-bold tracking-widest flex items-center justify-center mb-12">
         SISTEMA S
         <span className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#3b82f6] shadow-[0_0_30px_rgba(59,130,246,0.8)] mx-2"></span>
@@ -20,7 +76,6 @@ function Login({ onVolver, onIrRegistro }) {
         <span className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#ff5722] shadow-[0_0_30px_rgba(255,87,34,0.8)] ml-2"></span>
       </h1>
 
-      {/* TARJETA DE LOGIN */}
       <div className="bg-[#161b2e]/90 backdrop-blur-md border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl">
         
         <div className="text-center mb-8">
@@ -28,43 +83,54 @@ function Login({ onVolver, onIrRegistro }) {
           <p className="text-sm text-gray-400">Inicia sesión en tu cuenta</p>
         </div>
 
-        <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+        {/* Zona para mostrar alertas de error */}
+        {mensajeError && (
+          <div className="bg-red-500/10 border border-red-500/50 text-red-500 text-sm p-3 rounded-lg mb-6 text-center">
+            {mensajeError}
+          </div>
+        )}
+
+        {/* Formulario conectado a handleSubmit */}
+        <form className="space-y-5" onSubmit={handleSubmit}>
           
-          {/* Campo Usuario */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Usuario</label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <input 
+                type="text" 
+                name="usuario" // Muy importante para conectar con la memoria
+                value={formData.usuario}
+                onChange={handleChange}
+                className="w-full bg-[#0f1322] border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#3b82f6] transition"
+                placeholder="Ingresa tu usuario"
+              />
+               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
-              <input 
-                type="text" 
-                className="w-full bg-[#0f1322] border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#3b82f6] transition"
-                placeholder="Ingresa tu usuario"
-              />
             </div>
           </div>
 
-          {/* Campo Contraseña */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Contraseña</label>
             <div className="relative">
+              <input 
+                type="password" 
+                name="contrasena" // Muy importante para conectar con la memoria
+                value={formData.contrasena}
+                onChange={handleChange}
+                className="w-full bg-[#0f1322] border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#3b82f6] transition"
+                placeholder="Ingresa tu contraseña"
+              />
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <input 
-                type="password" 
-                className="w-full bg-[#0f1322] border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#3b82f6] transition"
-                placeholder="Ingresa tu contraseña"
-              />
             </div>
           </div>
 
-          {/* Recordarme y Contraseña Olvidada */}
           <div className="flex items-center justify-between text-sm">
             <label className="flex items-center text-gray-300 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 rounded border-gray-600 bg-[#0f1322] text-[#3b82f6] focus:ring-[#3b82f6] focus:ring-offset-[#161b2e] mr-2" />
@@ -73,16 +139,15 @@ function Login({ onVolver, onIrRegistro }) {
             <a href="#" className="text-gray-400 hover:text-white transition">¿Olvidaste tu contraseña?</a>
           </div>
 
-          {/* Botón Principal */}
           <button 
             type="submit" 
-            className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold py-3 rounded-lg shadow-[0_0_15px_rgba(37,99,235,0.4)] transition mt-4"
+            disabled={cargando} // Desactivamos el botón mientras carga
+            className={`w-full font-semibold py-3 rounded-lg transition mt-4 ${cargando ? 'bg-blue-800 text-gray-400 cursor-not-allowed' : 'bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'}`}
           >
-            Iniciar Sesión
+            {cargando ? 'Conectando...' : 'Iniciar Sesión'}
           </button>
         </form>
 
-        {/* Enlace de Registro */}
         <div className="text-center mt-6 text-sm text-gray-400">
           ¿No tienes cuenta? <button onClick={onIrRegistro} className="text-[#3b82f6] hover:text-blue-400 font-medium transition">Regístrate</button>
         </div>
