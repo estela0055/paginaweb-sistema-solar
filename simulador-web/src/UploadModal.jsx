@@ -1,95 +1,119 @@
 import React, { useState } from 'react';
 
-function UploadModal({ isOpen, onClose }) {
-  const [privado, setPrivado] = useState(false);
+function UploadModal({ isOpen, onClose, usuario }) {
+  const [titulo, setTitulo] = useState('');
+  const [archivo, setArchivo] = useState(null);
+  const [cargando, setCargando] = useState(false);
+  const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
 
-  // Si isOpen es falso, no dibujamos nada en pantalla
-  if (!isOpen) return null;
+  // Si el modal está cerrado o no hay usuario, no pintamos nada
+  if (!isOpen || !usuario) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMensaje({ texto: '', tipo: '' });
+
+    if (!titulo.trim() || !archivo) {
+      return setMensaje({ texto: 'Por favor, ponle un título y selecciona un archivo.', tipo: 'error' });
+    }
+
+    setCargando(true);
+
+    // MAGIA AQUÍ: Usamos FormData para empaquetar el archivo junto con el texto
+    const formData = new FormData();
+    formData.append('titulo', titulo);
+    formData.append('autor', usuario.nombre);
+    formData.append('usuarioId', usuario.id);
+    formData.append('num_planetas', 0); // Lo dejamos en 0 de momento
+    formData.append('archivo', archivo); // Añadimos el archivo físico
+
+    try {
+      // OJO: Al usar FormData, NO ponemos 'Content-Type'. El navegador lo pone automáticamente.
+      const respuesta = await fetch(`${import.meta.env.VITE_API_URL}/api/simulaciones`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (respuesta.ok) {
+        setMensaje({ texto: '¡Simulación en órbita! 🚀', tipo: 'exito' });
+        
+        // Esperamos 2 segundos para que lea el mensaje, cerramos y recargamos para verla
+        setTimeout(() => {
+          onClose();
+          window.location.reload(); 
+        }, 2000);
+      } else {
+        const datos = await respuesta.json();
+        setMensaje({ texto: datos.error || 'Hubo un error al subir.', tipo: 'error' });
+        setCargando(false);
+      }
+    } catch (error) {
+      console.error(error);
+      setMensaje({ texto: 'Error de conexión con la base espacial.', tipo: 'error' });
+      setCargando(false);
+    }
+  };
 
   return (
-    // FONDO OSCURO DESENFOCADO (Ocupa toda la pantalla y se pone por encima de todo)
-    <div className="fixed inset-0 bg-[#0a0e17]/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-white">
-      
-      {/* CAJA DEL MODAL */}
-      <div className="bg-[#161b2e] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl relative overflow-hidden animate-fade-in-up">
+    <div className="fixed inset-0 bg-[#0a0e17]/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans animate-fade-in">
+      <div className="bg-[#161b2e] border border-[#5b3cff]/30 rounded-2xl w-full max-w-md shadow-[0_0_50px_rgba(91,60,255,0.15)] relative overflow-hidden">
         
-        {/* CABECERA DEL MODAL */}
-        <div className="flex justify-between items-center p-6 border-b border-white/10 bg-[#0f1322]">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <span>↑</span> Subir Simulación
-          </h2>
-          <button 
-            onClick={onClose}
-            className="text-gray-400 hover:text-white hover:bg-white/10 p-2 rounded-lg transition"
-          >
-            ✕
-          </button>
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white p-2 rounded-lg transition z-10">
+          ✕
+        </button>
+
+        <div className="p-8 pb-4 text-center">
+          <div className="text-4xl mb-4">🛰️</div>
+          <h2 className="text-2xl font-bold mb-2">Subir Simulación</h2>
+          <p className="text-sm text-gray-400">Comparte tu sistema estelar con la comunidad</p>
         </div>
 
-        {/* CONTENIDO DEL FORMULARIO */}
-        <div className="p-6 space-y-5">
-          
-          {/* Nombre */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">Nombre de la Simulación</label>
-            <input 
-              type="text" 
-              placeholder="Ej: Sistema Binario Alpha"
-              className="w-full bg-[#0f1322] border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#3b82f6] transition"
-            />
-          </div>
+        <div className="p-8 pt-4">
+          {mensaje.texto && (
+            <div className={`p-3 rounded-lg mb-6 text-sm text-center border ${
+              mensaje.tipo === 'exito' ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-red-500/10 border-red-500/50 text-red-400'
+            }`}>
+              {mensaje.texto}
+            </div>
+          )}
 
-          {/* Descripción */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">Descripción</label>
-            <textarea 
-              rows="3"
-              placeholder="Explica qué tiene de especial este sistema..."
-              className="w-full bg-[#0f1322] border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#3b82f6] transition resize-none"
-            ></textarea>
-          </div>
-
-          {/* Interruptor Privado/Público */}
-          <div className="flex items-center justify-between bg-[#0f1322] p-4 rounded-lg border border-white/5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <p className="font-medium text-sm">Simulación Privada</p>
-              <p className="text-xs text-gray-500">Solo tú podrás ver y cargar este sistema.</p>
+              <label className="block text-sm font-medium text-gray-400 mb-2">Nombre del Sistema</label>
+              <input 
+                type="text" 
+                value={titulo} 
+                onChange={(e) => setTitulo(e.target.value)}
+                className="w-full bg-[#0f1322] border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#5b3cff] transition"
+                placeholder="Ej: Sistema Binario Alpha"
+              />
             </div>
-            {/* Diseño de Toggle personalizado */}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">Archivo de simulación (.json)</label>
+              {/* Botón de archivo personalizado para que encaje con el diseño oscuro */}
+              <input 
+                type="file" 
+                accept=".json,.txt" // Aquí puedes restringir el tipo de archivo
+                onChange={(e) => setArchivo(e.target.files[0])}
+                className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#5b3cff]/20 file:text-[#5b3cff] hover:file:bg-[#5b3cff]/30 cursor-pointer"
+              />
+              <p className="text-xs text-gray-500 mt-2">Sube el archivo exportado desde Unity.</p>
+            </div>
+
             <button 
-              onClick={() => setPrivado(!privado)}
-              className={`w-12 h-6 rounded-full transition-colors relative ${privado ? 'bg-[#3b82f6]' : 'bg-gray-600'}`}
+              type="submit" 
+              disabled={cargando}
+              className={`w-full font-bold py-3 rounded-lg transition mt-4 ${
+                cargando 
+                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed' 
+                  : 'bg-[#5b3cff] hover:bg-[#4a2eec] text-white shadow-[0_0_15px_rgba(91,60,255,0.4)]'
+              }`}
             >
-              <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${privado ? 'translate-x-7' : 'translate-x-1'}`}></div>
+              {cargando ? 'Subiendo a la nube...' : 'Publicar Sistema'}
             </button>
-          </div>
-
-          {/* Zona de subida de archivo (Placeholder visual) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1.5">Archivo de entorno (.unity, .json)</label>
-            <div className="border-2 border-dashed border-gray-600 hover:border-[#3b82f6] hover:bg-[#3b82f6]/5 rounded-xl p-8 text-center transition cursor-pointer group">
-              <div className="w-12 h-12 bg-[#0f1322] rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
-                <span className="text-xl">📁</span>
-              </div>
-              <p className="text-sm font-medium mb-1">Haz clic o arrastra tu archivo aquí</p>
-              <p className="text-xs text-gray-500">Tamaño máximo: 50MB (Preparado para Cloudflare R2)</p>
-            </div>
-          </div>
+          </form>
         </div>
-
-        {/* PIE DEL MODAL (Botones) */}
-        <div className="p-6 border-t border-white/10 bg-[#0f1322] flex justify-end gap-3">
-          <button 
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition"
-          >
-            Cancelar
-          </button>
-          <button className="bg-[#5b3cff] hover:bg-[#4a2eec] text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-[0_0_15px_rgba(91,60,255,0.4)] transition">
-            Publicar
-          </button>
-        </div>
-
       </div>
     </div>
   );

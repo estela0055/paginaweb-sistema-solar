@@ -1,41 +1,41 @@
 import React, { useState } from 'react';
 
-// Añadimos una nueva función "onLoginExitoso" que nos pasará App.jsx
+// Componente de autenticación de usuario
 function Login({ onVolver, onIrRegistro, onLoginExitoso }) {
-  // 1. Memoria para los campos del formulario
+  // Estado local para los campos del formulario
   const [formData, setFormData] = useState({
     usuario: '',
     contrasena: ''
   });
 
-  // Memoria para mostrar errores
+  // Estado para el manejo de errores y carga en la interfaz
   const [mensajeError, setMensajeError] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  // 2. Actualizamos la memoria cuando el usuario teclea
+  // Manejo de cambios en los inputs controlados del formulario
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
-    setMensajeError(''); // Limpiamos errores si el usuario cambia el texto
+    setMensajeError(''); // Reseteo del estado de error al modificar datos
   };
 
-  // 3. Lo que ocurre al pulsar el botón "Iniciar Sesión"
+  // Procesamiento de envío del formulario de autenticación
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Evita recargar la página
+    e.preventDefault(); // Prevención de la recarga por defecto del navegador
     setMensajeError('');
     
-    // Validación básica: que los campos no estén vacíos
+    // Validación básica de campos requeridos
     if (!formData.usuario || !formData.contrasena) {
       return setMensajeError('Por favor, ingresa tu usuario y contraseña.');
     }
 
-    setCargando(true); // Ponemos el botón en modo "cargando"
+    setCargando(true); // Activación del estado de carga visual
 
     try {
-      // 4. Llamamos a nuestro servidor Node.js (al puerto 3000)
-      const respuesta = await fetch('http://127.0.0.1:3000/api/login', {
+      // Petición de inicio de sesión a la API del backend usando variable de entorno
+      const respuesta = await fetch(`${import.meta.env.VITE_API_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -46,14 +46,12 @@ function Login({ onVolver, onIrRegistro, onLoginExitoso }) {
 
       const datos = await respuesta.json();
 
-      // Si el servidor nos devuelve un error (ej. contraseña incorrecta)
+      // Manejo de respuesta HTTP de error (credenciales incorrectas, etc.)
       if (!respuesta.ok) {
         setMensajeError(datos.error);
         setCargando(false);
       } else {
-        // ¡Si todo va bien! El servidor nos ha dejado pasar.
-        // Llamamos a la función que nos mandará de vuelta al inicio, 
-        // y le pasamos los datos del usuario.
+        // Redirección y propagación del estado de sesión hacia el componente padre
         onLoginExitoso(datos.usuario);
       }
     } catch (error) {
@@ -83,14 +81,14 @@ function Login({ onVolver, onIrRegistro, onLoginExitoso }) {
           <p className="text-sm text-gray-400">Inicia sesión en tu cuenta</p>
         </div>
 
-        {/* Zona para mostrar alertas de error */}
+        {/* Renderizado condicional de alertas de error en la UI */}
         {mensajeError && (
           <div className="bg-red-500/10 border border-red-500/50 text-red-500 text-sm p-3 rounded-lg mb-6 text-center">
             {mensajeError}
           </div>
         )}
 
-        {/* Formulario conectado a handleSubmit */}
+        {/* Formulario de autenticación */}
         <form className="space-y-5" onSubmit={handleSubmit}>
           
           <div>
@@ -98,7 +96,7 @@ function Login({ onVolver, onIrRegistro, onLoginExitoso }) {
             <div className="relative">
               <input 
                 type="text" 
-                name="usuario" // Muy importante para conectar con la memoria
+                name="usuario" // Clave de vinculación para el estado controlado
                 value={formData.usuario}
                 onChange={handleChange}
                 className="w-full bg-[#0f1322] border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#3b82f6] transition"
@@ -117,7 +115,7 @@ function Login({ onVolver, onIrRegistro, onLoginExitoso }) {
             <div className="relative">
               <input 
                 type="password" 
-                name="contrasena" // Muy importante para conectar con la memoria
+                name="contrasena" // Clave de vinculación para el estado controlado
                 value={formData.contrasena}
                 onChange={handleChange}
                 className="w-full bg-[#0f1322] border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#3b82f6] transition"
@@ -141,7 +139,7 @@ function Login({ onVolver, onIrRegistro, onLoginExitoso }) {
 
           <button 
             type="submit" 
-            disabled={cargando} // Desactivamos el botón mientras carga
+            disabled={cargando} // Bloqueo del botón durante la resolución de fetch
             className={`w-full font-semibold py-3 rounded-lg transition mt-4 ${cargando ? 'bg-blue-800 text-gray-400 cursor-not-allowed' : 'bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'}`}
           >
             {cargando ? 'Conectando...' : 'Iniciar Sesión'}

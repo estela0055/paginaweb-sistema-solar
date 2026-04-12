@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 
-// AÑADIMOS LA PROP onUsuarioActualizado
+// Componente de configuración de cuenta y perfil de usuario
 function Settings({ usuario, onVolver, onCerrarSesion, onUsuarioActualizado }) {
   
   const [formData, setFormData] = useState({
     nombre: usuario?.nombre || '',
-    pronombres: usuario?.pronombres || '', // Cargamos sus pronombres si los tiene
+    pronombres: usuario?.pronombres || '', // Asignación de valores por defecto o preexistentes
     contrasenaActual: '',
     nuevaContrasena: ''
   });
 
   const [mensajeExito, setMensajeExito] = useState('');
-  const [mensajeError, setMensajeError] = useState(''); // Añadimos memoria para errores
+  const [mensajeError, setMensajeError] = useState(''); // Estado para manejo de UI en errores
   const [cargando, setCargando] = useState(false);
 
   const handleChange = (e) => {
@@ -27,12 +27,12 @@ function Settings({ usuario, onVolver, onCerrarSesion, onUsuarioActualizado }) {
     setMensajeError('');
     
     try {
-      // Llamamos a la nueva ruta del backend
-      const respuesta = await fetch('http://127.0.0.1:3000/api/usuarios/actualizar', {
-        method: 'PUT', // Usamos PUT para modificar
+      // Petición HTTP PUT para actualización de la información del usuario
+      const respuesta = await fetch(`${import.meta.env.VITE_API_URL}/api/usuarios/actualizar`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: usuario.id, // Muy importante decirle al servidor QUIÉN somos
+          id: usuario.id, // Requisito indispensable de identificación
           nombre: formData.nombre,
           pronombres: formData.pronombres,
           contrasenaActual: formData.contrasenaActual,
@@ -47,9 +47,9 @@ function Settings({ usuario, onVolver, onCerrarSesion, onUsuarioActualizado }) {
         setCargando(false);
       } else {
         setMensajeExito(datos.mensaje);
-        // Limpiamos las contraseñas del formulario por seguridad
+        // Limpieza táctica de campos sensibles posteriores a la modificación
         setFormData({ ...formData, contrasenaActual: '', nuevaContrasena: '' });
-        // Le avisamos a App.jsx que el usuario ha cambiado de nombre
+        // Propagación interactiva del estado editado hacia App.jsx
         onUsuarioActualizado(datos.usuario);
         setCargando(false);
       }
@@ -89,16 +89,15 @@ function Settings({ usuario, onVolver, onCerrarSesion, onUsuarioActualizado }) {
 
         <form onSubmit={handleGuardar} className="space-y-6">
           
-          {/* SECCIÓN 1: FOTO DE PERFIL */}
+          {/* Sección de avatar o foto de perfil visual */}
           <div className="bg-[#161b2e] border border-white/10 rounded-2xl p-8 flex flex-col sm:flex-row items-center gap-8 shadow-xl">
             <div className="relative group cursor-pointer">
-              {/* Círculo de la foto actual */}
+              {/* Representación visual predeterminada del avatar */}
               <div className="w-28 h-28 bg-[#3b82f6] rounded-full flex items-center justify-center text-4xl font-bold border-4 border-[#0a0e17] shadow-[0_0_30px_rgba(59,130,246,0.3)] group-hover:opacity-50 transition">
                 {usuario.nombre.charAt(0).toUpperCase()}
               </div>
-              {/* Icono de editar que aparece al pasar el ratón */}
+              {/* Control superpuesto de edición */}
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                <span className="text-2xl">📷</span>
               </div>
             </div>
             <div className="text-center sm:text-left">
@@ -110,10 +109,10 @@ function Settings({ usuario, onVolver, onCerrarSesion, onUsuarioActualizado }) {
             </div>
           </div>
 
-          {/* SECCIÓN 2: DATOS PERSONALES */}
+          {/* Sección de identidad y datos personales */}
           <div className="bg-[#161b2e] border border-white/10 rounded-2xl p-8 shadow-xl">
             <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-              <span className="text-[#3b82f6]">👤</span> Identidad
+              Identidad
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -141,10 +140,10 @@ function Settings({ usuario, onVolver, onCerrarSesion, onUsuarioActualizado }) {
             </div>
           </div>
 
-          {/* SECCIÓN 3: SEGURIDAD */}
+          {/* Sección de credenciales y seguridad de cuenta */}
           <div className="bg-[#161b2e] border border-white/10 rounded-2xl p-8 shadow-xl">
             <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-              <span className="text-[#ff5722]">🔒</span> Seguridad
+              Seguridad
             </h3>
             
             <div className="space-y-4">
@@ -165,7 +164,7 @@ function Settings({ usuario, onVolver, onCerrarSesion, onUsuarioActualizado }) {
             </div>
           </div>
 
-          {/* ZONA DE BOTONES INFERIOR */}
+          {/* Controles de acción persistentes */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4">
             <button 
               type="button" onClick={onCerrarSesion}

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 
+// Componente de registro de nuevos usuarios
 function Register({ onVolver, onIrLogin }) {
-  // 1. Creamos la memoria para guardar lo que el usuario escribe
+  // Estado local para los campos del formulario de registro
   const [formData, setFormData] = useState({
     usuario: '',
     correo: '',
@@ -9,38 +10,38 @@ function Register({ onVolver, onIrLogin }) {
     confirmarContrasena: ''
   });
 
-  // Memoria para mostrar mensajes de error o éxito
+  // Estado para el manejo de feedback visual (errores y confirmaciones)
   const [mensajeError, setMensajeError] = useState('');
   const [mensajeExito, setMensajeExito] = useState('');
 
-  // 2. Esta función actualiza la memoria cada vez que el usuario teclea algo
+  // Manejo de cambios bidireccional en los inputs controlados
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
-    setMensajeError(''); // Limpiamos errores si el usuario empieza a escribir de nuevo
+    setMensajeError(''); // Reseteo de errores en tiempo de escritura
   };
 
-  // 3. Esta función se ejecuta al darle al botón "Registrarse"
+  // Validación y envío del formulario al backend
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Evita que la página se recargue sola
+    e.preventDefault(); // Prevención del comportamiento por defecto del navegador
     setMensajeError('');
     setMensajeExito('');
 
-    // Validación 1: Que no haya campos vacíos
+    // Validación de campos requeridos vacíos
     if (!formData.usuario || !formData.correo || !formData.contrasena) {
       return setMensajeError('Por favor, rellena todos los campos.');
     }
 
-    // Validación 2: Que las contraseñas coincidan
+    // Comprobación de coincidencia de contraseñas
     if (formData.contrasena !== formData.confirmarContrasena) {
       return setMensajeError('Las contraseñas no coinciden.');
     }
 
     try {
-      // Llamamos al servidor enviando los datos
-      const respuesta = await fetch('http://localhost:3000/api/registro', {
+      // Petición HTTP POST para creación de usuario
+      const respuesta = await fetch(`${import.meta.env.VITE_API_URL}/api/registro`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -52,13 +53,13 @@ function Register({ onVolver, onIrLogin }) {
 
       const datos = await respuesta.json();
 
-      // Si el servidor nos devuelve un error (ej. usuario repetido), lo mostramos
+      // Manejo de respuesta HTTP no 2xx (e.g., usuario ya existente)
       if (!respuesta.ok) {
         setMensajeError(datos.error);
       } else {
-        // Si todo va bien, mostramos éxito y podríamos enviarlo al login
+        // Callback de éxito: notificación al usuario y reseteo de los campos
         setMensajeExito('¡Cuenta creada con éxito! Ya puedes iniciar sesión.');
-        setFormData({ usuario: '', correo: '', contrasena: '', confirmarContrasena: '' }); // Limpiamos el formulario
+        setFormData({ usuario: '', correo: '', contrasena: '', confirmarContrasena: '' }); // Limpieza del estado
       }
     } catch (error) {
       setMensajeError('Error al conectar con el servidor.');
@@ -85,7 +86,7 @@ function Register({ onVolver, onIrLogin }) {
           <p className="text-sm text-gray-400">Regístrate para comenzar</p>
         </div>
 
-        {/* Zona para mostrar alertas (Errores en rojo, Éxito en verde) */}
+        {/* Renderizado condicional de alertas y estados de la solicitud */}
         {mensajeError && (
           <div className="bg-red-500/10 border border-red-500/50 text-red-500 text-sm p-3 rounded-lg mb-6 text-center">
             {mensajeError}
@@ -97,13 +98,14 @@ function Register({ onVolver, onIrLogin }) {
           </div>
         )}
 
+        {/* Formulario de creación de cuenta */}
         <form className="space-y-4" onSubmit={handleSubmit}>
           
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Usuario</label>
             <input 
               type="text" 
-              name="usuario" // Muy importante poner el 'name'
+              name="usuario" // Clave de vinculación para el estado controlado
               value={formData.usuario}
               onChange={handleChange}
               className="w-full bg-[#0f1322] border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#3b82f6] transition"

@@ -1,23 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import UploadModal from './UploadModal'; // Añade esta línea
+import UploadModal from './UploadModal';
 import LoginModal from './LoginModal';
 
-function Community({ usuario, setPagina, onLoginExitoso }) {
-  // 1. Ahora 'simulaciones' empieza como una lista vacía []
+function Community({ usuario, setPagina, onLoginExitoso, onVolver }) {
   const [simulaciones, setSimulaciones] = useState([]);
   const [cargando, setCargando] = useState(true);
- const [modalSubirAbierto, setModalSubirAbierto] = useState(false);
+  const [modalSubirAbierto, setModalSubirAbierto] = useState(false);
   const [modalLoginAbierto, setModalLoginAbierto] = useState(false);
-  // 2. useEffect: Esto se ejecuta UNA SOLA VEZ cuando se abre esta pestaña
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroActivo, setFiltroActivo] = useState('recientes'); 
+
   useEffect(() => {
-    // Función para ir a buscar los datos al backend
     const obtenerDatos = async () => {
       try {
-        // Llamamos a la dirección de tu servidor Node.js
-        const respuesta = await fetch('http://127.0.0.1:3000/api/simulaciones');
+        const respuesta = await fetch(`${import.meta.env.VITE_API_URL}/api/simulaciones?usuarioId=${usuario?.id || 0}`);
         const datosReales = await respuesta.json();
-        
-        // Guardamos los datos en la memoria de React y quitamos el "Cargando"
         setSimulaciones(datosReales);
         setCargando(false);
       } catch (error) {
@@ -25,75 +22,206 @@ function Community({ usuario, setPagina, onLoginExitoso }) {
         setCargando(false);
       }
     };
-
     obtenerDatos();
-  }, []); // Los corchetes vacíos [] significan "hazlo solo al cargar la página"
+  }, [usuario?.id]); // Recargar si el usuario inicia/cierra sesión
 
-  // Función auxiliar para poner la fecha bonita (ya que la base de datos la manda un poco fea)
   const formatearFecha = (fechaISO) => {
     const fecha = new Date(fechaISO);
     return `${fecha.getDate()}/${fecha.getMonth() + 1}/${fecha.getFullYear()}`;
   };
-const manejarClickSubir = () => {
+
+  const manejarClickSubir = () => {
     if (usuario) {
       setModalSubirAbierto(true);
     } else {
-      // 4. Si no hay usuario, ABRIMOS EL MODAL en vez de cambiar de página
       setModalLoginAbierto(true); 
     }
   };
+
+  const manejarClickLike = async (simulacionId) => {
+    if (!usuario) {
+      setModalLoginAbierto(true);
+      return; 
+    }
+    try {
+      const respuesta = await fetch(`${import.meta.env.VITE_API_URL}/api/simulaciones/${simulacionId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuarioId: usuario.id }) 
+      });
+
+      if (respuesta.ok) {
+        const datosActualizados = await respuesta.json();
+        setSimulaciones(simulaciones.map(sim => {
+          if (sim.id === simulacionId) {
+             return { 
+               ...sim, 
+               likes: datosActualizados.likesActuales,
+               has_liked: datosActualizados.estado === 'añadido' 
+             };
+          }
+          return sim;
+        }));
+      }
+    } catch (error) {
+      console.error('Error al dar like:', error);
+    }
+  };
+
+  // Eliminación de una simulación en el backend y actualización del estado
+  const manejarBorrado = async (simulacionId) => {
+    // Verificación de intención de borrado del usuario
+    if (!window.confirm("¿Está seguro de que desea eliminar esta simulación? Esta acción no se puede deshacer.")) {
+      return; 
+    }
+
+    try {
+      const respuesta = await fetch(`${import.meta.env.VITE_API_URL}/api/simulaciones/${simulacionId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuarioId: usuario.id }) 
+      });
+
+      if (respuesta.ok) {
+        // Actualización del estado local excluyendo el registro eliminado
+        setSimulaciones(simulaciones.filter(sim => sim.id !== simulacionId));
+      } else {
+        const datos = await respuesta.json();
+        alert(datos.error); // Manejo de errores de autorización o de servidor
+      }
+    } catch (error) {
+      console.error('Error al borrar:', error);
+    }
+  };
+
+  // Procesamiento de datos: filtrado y ordenamiento de las simulaciones
+  const simulacionesProcesadas = simulaciones
+    .filter((sim) => {
+      const coincideBusqueda = sim.titulo.toLowerCase().includes(busqueda.toLowerCase());
+      
+      if (filtroActivo === 'favoritos') return coincideBusqueda && sim.has_liked;
+      
+      // Filtrado por autoría del usuario autenticado actualmente
+      if (filtroActivo === 'propias') return coincideBusqueda && (usuario && sim.autor === usuario.nombre);
+      
+      return coincideBusqueda;
+    })
+    .sort((a, b) => {
+      if (filtroActivo === 'populares') {
+        return b.likes - a.likes; 
+      } else {
+        return new Date(b.fecha_publicacion) - new Date(a.fecha_publicacion);
+      }
+    });
+
   return (
     <div className="min-h-screen bg-[#0a0f1d] text-white p-8 font-sans">
       
-     {/* CABECERA */}
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Simulaciones de la Comunidad</h1>
-          <p className="text-gray-400">Explora y descarga las simulaciones creadas por usuarios</p>
+      {/* Componente de cabecera con navegación y acciones principales */}
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-6 mb-8 p-6 bg-[#161b2e] rounded-xl border border-white/5 shadow-2xl">
+        <button 
+          onClick={onVolver}
+          className="text-sm bg-[#1a1f35] border border-white/10 hover:bg-white/5 text-white/70 hover:text-white px-5 py-2.5 rounded-lg flex items-center gap-2.5 transition whitespace-nowrap"
+        >
+          <span>←</span> Volver al inicio
+        </button>
+        <div className="text-center sm:text-left">
+          <h1 className="text-3xl font-bold mb-1.5">Simulaciones de la Comunidad</h1>
+          <p className="text-sm text-gray-400">Explora y descarga las simulaciones creadas por usuarios</p>
         </div>
-        
-        {/* 3. CAMBIAMOS EL BOTÓN para que use nuestra nueva función */}
         <button 
           onClick={manejarClickSubir} 
-          className="bg-[#4f39f6] hover:bg-[#402de6] transition px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2"
+          className="bg-[#4f39f6] hover:bg-[#402de6] transition px-6 py-3 rounded-lg font-semibold flex items-center gap-2.5 whitespace-nowrap"
         >
           <span>↑</span> Subir Simulación
         </button>
       </div>
 
-      {/* BARRA DE BÚSQUEDA Y FILTROS */}
-      <div className="flex gap-4 mb-8">
-        <div className="flex-grow bg-[#1a1f35] rounded-lg flex items-center px-4 border border-white/5">
-          <span className="text-gray-400 mr-2">🔍</span>
+      {/* Controles de filtrado y barra de búsqueda */}
+      <div className="flex flex-wrap gap-4 mb-8">
+        <div className="flex-grow bg-[#1a1f35] rounded-lg flex items-center px-4 border border-white/5 focus-within:border-[#4f39f6] transition">
           <input 
             type="text" 
-            placeholder="Buscar simulaciones..." 
+            placeholder="Buscar por nombre o autor..." 
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
             className="bg-transparent border-none outline-none w-full py-3 text-white placeholder-gray-500"
           />
         </div>
-        <button className="bg-[#1a1f35] border border-white/5 px-6 rounded-lg flex items-center gap-2 hover:bg-white/5 transition">
-          <span>⏳</span> Filtros
+        
+        {/* Renderizado condicional del filtro de simulaciones propias */}
+        {usuario && (
+          <button 
+            onClick={() => setFiltroActivo('propias')}
+            className={`border px-6 rounded-lg transition font-medium ${
+              filtroActivo === 'propias' 
+                ? 'bg-[#5b3cff]/20 border-[#5b3cff]/50 text-[#5b3cff]' 
+                : 'bg-[#1a1f35] border-white/5 hover:bg-white/5 text-gray-400'
+            }`}
+          >
+            Mis Simulaciones
+          </button>
+        )}
+
+        <button 
+          onClick={() => setFiltroActivo('favoritos')}
+          className={`border px-6 rounded-lg transition font-medium ${
+            filtroActivo === 'favoritos' 
+              ? 'bg-red-500/20 border-red-500/50 text-red-400' 
+              : 'bg-[#1a1f35] border-white/5 hover:bg-white/5 text-gray-400'
+          }`}
+        >
+           Mis Favoritos
         </button>
-        <button className="bg-[#1a1f35] border border-white/5 px-6 rounded-lg hover:bg-white/5 transition">
-          Más populares
+        <button 
+          onClick={() => setFiltroActivo('populares')}
+          className={`border px-6 rounded-lg transition font-medium ${
+            filtroActivo === 'populares' 
+              ? 'bg-white/20 border-white/30 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]' 
+              : 'bg-[#1a1f35] border-white/5 hover:bg-white/5 text-gray-400'
+          }`}
+        >
+           Más populares
         </button>
-        <button className="bg-[#1a1f35] border border-white/5 px-6 rounded-lg hover:bg-white/5 transition">
-          Más recientes
+        <button 
+          onClick={() => setFiltroActivo('recientes')}
+          className={`border px-6 rounded-lg transition font-medium ${
+            filtroActivo === 'recientes' 
+              ? 'bg-white/20 border-white/30 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]' 
+              : 'bg-[#1a1f35] border-white/5 hover:bg-white/5 text-gray-400'
+          }`}
+        >
+           Más recientes
         </button>
       </div>
 
-      {/* MUESTRA UN MENSAJE MIENTRAS CARGA */}
       {cargando ? (
         <div className="text-center py-20 text-gray-400 animate-pulse">
-          <p className="text-xl">Conectando con la base de datos espacial...</p>
+          <p className="text-xl font-medium">Cargando simulaciones...</p>
+        </div>
+      ) : simulacionesProcesadas.length === 0 ? (
+        <div className="text-center py-24 text-gray-500 bg-[#161b2e] rounded-xl border border-white/5">
+          <p className="text-xl mb-2.5">No se encontraron resultados</p>
+          <p className="text-sm">No hemos encontrado ninguna simulación con esos criterios.</p>
         </div>
       ) : (
-        /* CUADRÍCULA DE SIMULACIONES CON DATOS DE LA BASE DE DATOS */
+        /* Renderizado de la cuadrícula de simulaciones */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {simulaciones.map((sim) => (
-            <div key={sim.id} className="bg-[#161b2e] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group">
+          {simulacionesProcesadas.map((sim) => {
+            // Verificación de autoría para renderizado condicional de opciones
+            const esMio = usuario && sim.autor === usuario.nombre;
+
+            return (
+            <div key={sim.id} className="bg-[#161b2e] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group shadow-lg relative overflow-hidden">
               
-              <div className="bg-[#0f1322] h-40 rounded-lg mb-4 flex items-center justify-center">
+              {/* Etiqueta visual indicadora de autoría */}
+              {esMio && (
+                <div className="absolute top-0 right-0 bg-[#5b3cff] text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg shadow-md z-10">
+                  TUYA
+                </div>
+              )}
+
+              <div className="bg-[#0f1322] h-40 rounded-lg mb-4 flex items-center justify-center border border-white/5">
                 <div className="relative flex items-center justify-center w-full h-full">
                   <div className="absolute w-20 h-20 rounded-full border border-gray-600/50"></div>
                   <div className="absolute w-12 h-12 rounded-full border border-gray-600/50"></div>
@@ -102,14 +230,13 @@ const manejarClickSubir = () => {
                 </div>
               </div>
 
-              {/* Fíjate que aquí usamos los nombres exactos de las columnas de tu base de datos: titulo, autor, num_planetas */}
-              <h3 className="font-bold text-lg mb-1">{sim.titulo}</h3>
-              <p className="text-sm text-gray-400 mb-4">por <span className="text-[#5b3cff]">{sim.autor}</span></p>
+              <h3 className="font-bold text-lg mb-1 pr-8">{sim.titulo}</h3>
+              <p className="text-sm text-gray-400 mb-4">por <span className="text-[#5b3cff] font-medium">{sim.autor}</span></p>
               
-              <div className="flex justify-between items-end text-xs text-gray-500 mb-4">
-                <div className="flex flex-col gap-1">
-                  <span>{sim.num_planetas} planetas</span>
-                  <span className="flex items-center gap-1">♡ {sim.likes} likes</span>
+              {/* Contenedor de estadísticas y metadata */}
+              <div className="flex justify-between items-end text-xs text-gray-500 mb-4 pt-4 border-t border-white/5">
+                <div className="flex flex-col gap-1.5">
+                  <span className="flex items-center gap-1.5 text-[#ff5722]">♡ {sim.likes} likes</span>
                 </div>
                 <span>{formatearFecha(sim.fecha_publicacion)}</span>
               </div>
@@ -118,27 +245,41 @@ const manejarClickSubir = () => {
                 <button className="flex-grow bg-[#4f39f6] hover:bg-[#402de6] transition py-2 rounded-lg font-semibold flex items-center justify-center gap-2">
                   <span>📥</span> Descargar
                 </button>
-                <button className="p-2 rounded-lg border border-white/10 hover:bg-white/5 text-gray-400 transition">
-                  ♥
+                
+                {/* Control de eliminación (renderizado condicional para el autor) */}
+                {esMio && (
+                  <button 
+                    onClick={() => manejarBorrado(sim.id)}
+                    className="p-2.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition text-sm font-semibold"
+                    title="Eliminar simulación"
+                  >
+                    Borrar
+                  </button>
+                )}
+
+                <button 
+                  onClick={() => manejarClickLike(sim.id)} 
+                  className={`p-2.5 rounded-lg border transition ${
+                    sim.has_liked 
+                      ? 'bg-red-500/10 border-red-500/50 text-red-500' 
+                      : 'border-white/10 text-gray-500 hover:text-red-400 hover:border-red-400/50'
+                  }`}
+                >
+                  {sim.has_liked ? '❤️' : '♥'}
                 </button>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
+      
+      {/* MODALES */}
       <UploadModal 
         isOpen={modalSubirAbierto} 
         onClose={() => setModalSubirAbierto(false)} 
+        usuario={usuario} 
       />
-
-      <LoginModal
-        isOpen={modalLoginAbierto}
-        onClose={() => setModalLoginAbierto(false)}
-        // Si le da a registrarse, le mandamos a la página de registro
-        onIrRegistro={() => setPagina('registro')} 
-        // Si se loguea bien, le avisamos a App.jsx para que ponga su nombre arriba
-        onLoginExitoso={onLoginExitoso}
-      />
+      <LoginModal isOpen={modalLoginAbierto} onClose={() => setModalLoginAbierto(false)} onIrRegistro={() => setPagina('registro')} onLoginExitoso={onLoginExitoso} />
     </div>
   );
 }
