@@ -1,3 +1,9 @@
+/*
+  Este es el componente principal de la aplicación React.
+  Actúa como el contenedor central que gestiona el estado global (como el usuario autenticado)
+  y se encarga de la navegación básica (renderizar diferentes pantallas como Inicio, Login, Comunidad, etc.) 
+  dependiendo del estado actual.
+*/
 import React, { useState, useEffect} from 'react';
 import Community from './Community';
 import Login from './Login';

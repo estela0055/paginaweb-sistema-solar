@@ -1,3 +1,10 @@
+/*
+  Componente Community:
+  Representa la pantalla "Comunidad" donde los usuarios pueden explorar, 
+  buscar, dar "like" y descargar simulaciones compartidas por otros.
+  También permite a los usuarios logueados subir nuevas simulaciones 
+  o eliminar las suyas propias.
+*/
 import React, { useState, useEffect } from 'react';
 import UploadModal from './UploadModal';
 import LoginModal from './LoginModal';

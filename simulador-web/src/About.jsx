@@ -1,3 +1,9 @@
+/*
+  Componente About:
+  Página estática e informativa ("Acerca de"). 
+  Suele contener información sobre el proyecto, sus creadores o cómo funciona
+  el simulador en un formato amigable.
+*/
 import React from 'react';
 
 function About({ onVolver }) {

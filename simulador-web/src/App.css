@@ -1,3 +1,9 @@
+/* 
+  Este archivo contiene los estilos CSS específicos para el componente principal App.jsx.
+  Define la apariencia visual de los elementos propios de esa pantalla (como el contador o el área "hero").
+  Al importarse dentro de App.jsx, estos estilos se aplican a nivel global en la aplicación.
+*/
+
 .counter {
   font-size: 16px;
   padding: 5px 10px;

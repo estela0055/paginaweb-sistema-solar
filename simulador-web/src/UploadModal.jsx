@@ -1,3 +1,9 @@
+/*
+  Componente UploadModal:
+  Al igual que el LoginModal, es un componente emergente. 
+  Aquí el usuario autenticado puede subir un archivo que contenga su simulación.
+  Interacciona con el servidor enviando los archivos por medio de FormData.
+*/
 import React, { useState } from 'react';
 
 function UploadModal({ isOpen, onClose, usuario }) {

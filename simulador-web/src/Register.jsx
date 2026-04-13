@@ -1,3 +1,9 @@
+/*
+  Componente Register:
+  Muestra el formulario para crear una nueva cuenta de usuario.
+  Se encarga de recopilar los datos, validarlos a nivel básico, enviarlos al servidor 
+  y notificar si el registro fue existoso para redirigir al login.
+*/
 import React, { useState } from 'react';
 
 // Componente de registro de nuevos usuarios

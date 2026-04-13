@@ -1,3 +1,9 @@
+/*
+  Archivo index.css:
+  Contiene los estilos estrictamente globales. 
+  Aquí también le decimos a Tailwind CSS v4 que se inicialice y configure 
+  por medio de @import "tailwindcss".
+*/
 @import "tailwindcss";
 
 body {

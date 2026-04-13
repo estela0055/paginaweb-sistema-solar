@@ -1,3 +1,8 @@
+/*
+  Componente Settings:
+  Pantalla de configuración donde un usuario autenticado puede visualizar
+  y modificar los datos de su perfil, como su nombre, pronombres y cambiar su contraseña.
+*/
 import React, { useState } from 'react';
 
 // Componente de configuración de cuenta y perfil de usuario

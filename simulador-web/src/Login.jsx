@@ -1,3 +1,9 @@
+/*
+  Componente Login:
+  Maneja el formulario de inicio de sesión de la aplicación.
+  Permite al usuario ingresar sus credenciales, las envía al backend para validar,
+  y actualiza el estado global si la autenticación es exitosa.
+*/
 import React, { useState } from 'react';
 
 // Componente de autenticación de usuario

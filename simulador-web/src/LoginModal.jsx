@@ -1,3 +1,10 @@
+/*
+  Componente LoginModal:
+  Es una versión "emergente" (modal o pop-up) del formulario de inicio de sesión.
+  Se utiliza, por ejemplo, cuando un usuario anónimo intenta hacer algo que requiere
+  estar logueado (como dar like o subir simulación) en la Comunidad, para que no pierda
+  el contexto en el que estaba navegando.
+*/
 import React, { useState } from 'react';
 
 function LoginModal({ isOpen, onClose, onIrRegistro, onLoginExitoso }) {
