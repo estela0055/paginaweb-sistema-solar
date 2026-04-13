@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        'space-dark': '#0a0f2c', // Un azul muy oscuro espacial
+        'space-dark': '#0a0f2c', // Un azul muy oscuro 
         'space-accent': '#ffcc00', // El amarillo/dorado de acento
       },
       fontFamily: {

@@ -65,7 +65,7 @@ function UploadModal({ isOpen, onClose, usuario }) {
         <div className="p-8 pb-4 text-center">
           <div className="text-4xl mb-4">🛰️</div>
           <h2 className="text-2xl font-bold mb-2">Subir Simulación</h2>
-          <p className="text-sm text-gray-400">Comparte tu sistema estelar con la comunidad</p>
+          <p className="text-sm text-gray-400">Comparte tu sistema con la comunidad</p>
         </div>
 
         <div className="p-8 pt-4">
