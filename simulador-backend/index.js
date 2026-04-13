@@ -46,12 +46,14 @@ app.get('/api/simulaciones', async (req, res) => {
 
   try {
     // Consulta SQL con subquery para determinar si el usuario actual ha dado like previamente
-    const query = `
-      SELECT s.*, 
-      (SELECT COUNT(*) FROM likes_simulaciones l WHERE l.simulacion_id = s.id AND l.usuario_id = $1) > 0 AS has_liked
-      FROM simulaciones s 
-      ORDER BY s.fecha_publicacion DESC
-    `;
+   const query = `
+  SELECT s.*, 
+  u.nombre_usuario as autor,
+  (SELECT COUNT(*) FROM likes_simulaciones l WHERE l.simulacion_id = s.id AND l.usuario_id = $1) > 0 AS has_liked
+  FROM simulaciones s 
+  JOIN usuarios u ON s.usuario_id = u.id
+  ORDER BY s.fecha_publicacion DESC
+`;
     
     const result = await pool.query(query, [usuarioId || 0]);
     res.json(result.rows);
@@ -280,14 +282,17 @@ app.post('/api/simulaciones/:id/like', async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor al procesar el like.' });
   }
 });
-
 // Endpoint POST de incepción de binarios mediante Multer y metadatos asociados
 app.post('/api/simulaciones', upload.single('archivo'), async (req, res) => {
   try {
-    const { titulo, autor, num_planetas, usuarioId } = req.body;
-    const archivo = req.file; // Buffer y metadatos alojados por el middleware 'multer'
-console.log("Datos recibidos:", { titulo, autor, usuarioId });
+    // 1. Recibimos los datos actualizados (¡adiós autor y num_planetas!)
+    const { titulo, descripcion, usuarioId } = req.body;
+    const archivo = req.file;
+
+    // Arreglado el console.log para que no dé error
+    console.log("Datos recibidos:", { titulo, descripcion, usuarioId });
     console.log("Archivo recibido:", archivo);
+
     if (!archivo || !titulo || !usuarioId) {
       return res.status(400).json({ error: 'Atributos o buffer faltantes en la request.' });
     }
@@ -309,11 +314,11 @@ console.log("Datos recibidos:", { titulo, autor, usuarioId });
     // Instanciación de endpoint público asumiendo path público de Cloudflare
     const urlPublica = `${process.env.R2_PUBLIC_URL}/${nombreUnico}`;
 
-    // Volcado SQL: registro asociado al Blob alojado para recuperación posterior
+    // 2. Volcado SQL CORREGIDO: Usamos las columnas exactas que dejamos en Neon
     const nuevaSimulacion = await pool.query(
-      `INSERT INTO simulaciones (titulo, autor, num_planetas, usuario_id, archivo_url) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [titulo, autor, num_planetas || 0, usuarioId, urlPublica]
+      `INSERT INTO simulaciones (titulo, descripcion, usuario_id, archivo_url) 
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [titulo, descripcion, usuarioId, urlPublica]
     );
 
     res.status(201).json({ 
