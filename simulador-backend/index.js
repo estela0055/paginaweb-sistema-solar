@@ -175,6 +175,105 @@ app.put('/api/usuarios/actualizar', async (req, res) => {
   }
 });
 
+// Endpoint GET para obtener todos los comentarios (padres e hijos)
+app.get('/api/simulaciones/:id/comentarios', async (req, res) => {
+  const simulacionId = req.params.id;
+
+  try {
+    const query = `
+      SELECT c.id, c.contenido, c.parent_id, c.fecha_publicacion, u.nombre_usuario as autor
+      FROM comentarios c
+      JOIN usuarios u ON c.usuario_id = u.id
+      WHERE c.simulacion_id = $1
+      ORDER BY c.fecha_publicacion ASC
+    `;
+    
+    const result = await pool.query(query, [simulacionId]);
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener comentarios:', error);
+    res.status(500).json({ error: 'Error al cargar los comentarios.' });
+  }
+});
+
+// Endpoint POST para publicar un comentario o una respuesta
+app.post('/api/simulaciones/:id/comentarios', async (req, res) => {
+  const simulacionId = req.params.id;
+  const { usuarioId, contenido, parentId } = req.body; // Recibimos el parentId (opcional)
+
+  if (!usuarioId || !contenido) {
+    return res.status(400).json({ error: 'Faltan datos para publicar el comentario.' });
+  }
+
+  try {
+    const nuevoComentario = await pool.query(
+      'INSERT INTO comentarios (contenido, usuario_id, simulacion_id, parent_id) VALUES ($1, $2, $3, $4) RETURNING id, contenido, parent_id, fecha_publicacion',
+      [contenido, usuarioId, simulacionId, parentId || null]
+    );
+
+    const usuario = await pool.query('SELECT nombre_usuario FROM usuarios WHERE id = $1', [usuarioId]);
+
+    res.status(201).json({
+      mensaje: 'Comentario publicado',
+      comentario: {
+        ...nuevoComentario.rows[0],
+        autor: usuario.rows[0].nombre_usuario
+      }
+    });
+  } catch (error) {
+    console.error('Error al guardar comentario:', error);
+    res.status(500).json({ error: 'No se pudo guardar el comentario.' });
+  }
+});
+// Borrar comentario (Solo autor del comentario o creador del sistema)
+app.delete('/api/comentarios/:id', async (req, res) => {
+  const { id } = req.params;
+  const { usuarioId } = req.body;
+
+  try {
+    const consulta = await pool.query(`
+      SELECT c.usuario_id, s.usuario_id as creador_sistema_id 
+      FROM comentarios c 
+      JOIN simulaciones s ON c.simulacion_id = s.id 
+      WHERE c.id = $1`, [id]);
+
+    if (consulta.rows.length === 0) return res.status(404).json({ error: 'No existe' });
+
+    const { usuario_id, creador_sistema_id } = consulta.rows[0];
+
+    if (usuarioId !== usuario_id && usuarioId !== creador_sistema_id) {
+      return res.status(403).json({ error: 'No tienes permiso' });
+    }
+
+    await pool.query('DELETE FROM comentarios WHERE id = $1', [id]);
+    res.json({ mensaje: 'Borrado con éxito' });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// Esconder/Mostrar comentario (Solo el creador del sistema)
+app.patch('/api/comentarios/:id/esconder', async (req, res) => {
+  const { id } = req.params;
+  const { usuarioId, esconder } = req.body; // esconder será true o false
+
+  try {
+    const consulta = await pool.query(`
+      SELECT s.usuario_id as creador_id 
+      FROM comentarios c 
+      JOIN simulaciones s ON c.simulacion_id = s.id 
+      WHERE c.id = $1`, [id]);
+
+    if (consulta.rows[0].creador_id !== usuarioId) {
+      return res.status(403).json({ error: 'Solo el dueño del sistema puede moderar' });
+    }
+
+    await pool.query('UPDATE comentarios SET es_escondido = $1 WHERE id = $2', [esconder, id]);
+    res.json({ mensaje: esconder ? 'Mensaje oculto' : 'Mensaje visible' });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
 // Endpoint DELETE para eliminación de simulación mediante autoría comprobada
 app.delete('/api/simulaciones/:id', async (req, res) => {
   const simulacionId = req.params.id;

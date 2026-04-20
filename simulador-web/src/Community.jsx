@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import UploadModal from './UploadModal';
 import LoginModal from './LoginModal';
-
+import SimulationModal from './SimulationModal';
 function Community({ usuario, setPagina, onLoginExitoso, onVolver }) {
   const [simulaciones, setSimulaciones] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -16,7 +16,8 @@ function Community({ usuario, setPagina, onLoginExitoso, onVolver }) {
   const [modalLoginAbierto, setModalLoginAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [filtroActivo, setFiltroActivo] = useState('recientes'); 
-
+const [modalSimulacionAbierto, setModalSimulacionAbierto] = useState(false);
+  const [simulacionSeleccionada, setSimulacionSeleccionada] = useState(null);
   useEffect(() => {
     const obtenerDatos = async () => {
       try {
@@ -219,7 +220,12 @@ function Community({ usuario, setPagina, onLoginExitoso, onVolver }) {
             const esMio = usuario && sim.autor === usuario.nombre;
 
             return (
-            <div key={sim.id} className="bg-[#161b2e] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group shadow-lg relative overflow-hidden">
+            <div key={sim.id}
+            onClick={() => {
+                setSimulacionSeleccionada(sim);
+                setModalSimulacionAbierto(true);
+              }}
+               className="bg-[#161b2e] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group shadow-lg relative overflow-hidden">
               
               {/* Etiqueta visual indicadora de autoría */}
               {esMio && (
@@ -256,7 +262,7 @@ function Community({ usuario, setPagina, onLoginExitoso, onVolver }) {
                 {/* Control de eliminación (renderizado condicional para el autor) */}
                 {esMio && (
                   <button 
-                    onClick={() => manejarBorrado(sim.id)}
+                    onClick={() =>{ e.stopPropagation(); manejarBorrado(sim.id); }}
                     className="p-2.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition text-sm font-semibold"
                     title="Eliminar simulación"
                   >
@@ -265,7 +271,7 @@ function Community({ usuario, setPagina, onLoginExitoso, onVolver }) {
                 )}
 
                 <button 
-                  onClick={() => manejarClickLike(sim.id)} 
+                  onClick={() =>{ e.stopPropagation(); manejarBorrado(sim.id); }}
                   className={`p-2.5 rounded-lg border transition ${
                     sim.has_liked 
                       ? 'bg-red-500/10 border-red-500/50 text-red-500' 
@@ -287,6 +293,12 @@ function Community({ usuario, setPagina, onLoginExitoso, onVolver }) {
         usuario={usuario} 
       />
       <LoginModal isOpen={modalLoginAbierto} onClose={() => setModalLoginAbierto(false)} onIrRegistro={() => setPagina('registro')} onLoginExitoso={onLoginExitoso} />
+    <SimulationModal 
+        isOpen={modalSimulacionAbierto} 
+        onClose={() => setModalSimulacionAbierto(false)} 
+        simulacion={simulacionSeleccionada}
+        usuario={usuario}
+      />
     </div>
   );
 }
