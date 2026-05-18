@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 
 function UploadModal({ isOpen, onClose, usuario }) {
   const [titulo, setTitulo] = useState('');
+  const [descripcion, setDescripcion] = useState(''); // ¡NUEVO!: Estado para la descripción
   const [archivo, setArchivo] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
@@ -28,9 +29,8 @@ function UploadModal({ isOpen, onClose, usuario }) {
     // MAGIA AQUÍ: Usamos FormData para empaquetar el archivo junto con el texto
     const formData = new FormData();
     formData.append('titulo', titulo);
-    formData.append('autor', usuario.nombre);
+    formData.append('descripcion', descripcion); // ¡NUEVO!: Empaquetamos la descripción para el backend
     formData.append('usuarioId', usuario.id);
-    formData.append('num_planetas', 0); // Lo dejamos en 0 de momento
     formData.append('archivo', archivo); // Añadimos el archivo físico
 
     try {
@@ -92,6 +92,18 @@ function UploadModal({ isOpen, onClose, usuario }) {
                 onChange={(e) => setTitulo(e.target.value)}
                 className="w-full bg-[#0f1322] border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#5b3cff] transition"
                 placeholder="Ej: Sistema Binario Alpha"
+              />
+            </div>
+
+            {/* ¡NUEVA SECCIÓN!: Caja de texto para la Descripción */}
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">Notas del Creador (Descripción)</label>
+              <textarea 
+                value={descripcion} 
+                onChange={(e) => setDescripcion(e.target.value)}
+                rows="4"
+                className="w-full bg-[#0f1322] border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#5b3cff] transition resize-none text-sm leading-relaxed"
+                placeholder="Describe las leyes físicas de tu sistema, órbitas, masa de la estrella o anotaciones del experimento..."
               />
             </div>
 

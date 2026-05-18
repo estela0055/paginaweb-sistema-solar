@@ -95,17 +95,26 @@ if (paginaActiva === 'acerca') {
       <nav className="flex justify-between items-center px-8 py-4 border-b border-white/10">
         
        {/* Renderizado condicional: muestra información de la cuenta si el usuario está autenticado; de lo contrario, muestra el botón de inicio de sesión */}
-      {usuarioLogueado ? (
+     {usuarioLogueado ? (
         <div 
           onClick={() => setPaginaActiva('configuracion')}
           className="flex items-center gap-3 cursor-pointer hover:bg-white/5 p-2 rounded-xl transition"
         >
-          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center font-bold border border-white/20">
-            {usuarioLogueado.nombre.charAt(0).toUpperCase()}
+          {/* NUEVO DIV DEL AVATAR CON IMAGEN */}
+          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center font-bold border border-white/20 overflow-hidden">
+            {usuarioLogueado.fotoPerfilUrl ? (
+              <img 
+                src={usuarioLogueado.fotoPerfilUrl} 
+                alt="Avatar" 
+                className="w-full h-full object-cover" 
+              />
+            ) : (
+              usuarioLogueado.nombre.charAt(0).toUpperCase()
+            )}
           </div>
           <div>
             <p className="text-sm font-bold text-white">{usuarioLogueado.nombre}</p>
-            <p className="text-xs text-[#3b82f6]">Mi Cuenta</p>
+            <p className="text-xs text-[#3b82f6]">Mi Cuenta ⚙️</p>
           </div>
         </div>
       ) : (

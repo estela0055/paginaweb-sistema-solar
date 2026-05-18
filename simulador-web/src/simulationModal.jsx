@@ -76,7 +76,20 @@ function SimulationModal({ isOpen, onClose, simulacion, usuario }) {
       console.error('Error:', error);
     }
   };
+const manejarDescarga = async () => {
+    // 1. Descargar el archivo directamente de Cloudflare R2
+    // Usamos _blank para que se abra/descargue en una pestaña nueva sin sacar al usuario de la web
+    window.open(simulacion.archivo_url, '_blank');
 
+    // 2. Avisar al backend para que sume +1 en la base de datos de forma silenciosa
+    try {
+      await fetch(`http://127.0.0.1:3000/api/simulaciones/${simulacion.id}/descarga`, {
+        method: 'POST'
+      });
+    } catch (error) {
+      console.error('No se pudo registrar la descarga estadísticamente:', error);
+    }
+  };
   // 2. BORRAR COMENTARIO
   const manejarBorrar = async (idComentario) => {
     if (!window.confirm("¿Eliminar este comentario? Se borrarán también las respuestas.")) return;
@@ -190,34 +203,46 @@ function SimulationModal({ isOpen, onClose, simulacion, usuario }) {
         
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white p-2 rounded-lg transition z-20 bg-[#161b2e]/80">✕</button>
 
-        {/* COLUMNA IZQUIERDA (Info Simulación) */}
+   {/* COLUMNA IZQUIERDA (Info Simulación) */}
         <div className="w-full md:w-1/2 p-8 border-b md:border-b-0 md:border-r border-white/10 flex flex-col h-full overflow-y-auto custom-scrollbar">
+          
           <div className="bg-[#0f1322] h-48 rounded-xl mb-6 flex items-center justify-center border border-white/5 relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-[#5b3cff]/20 to-transparent opacity-50"></div>
             <div className="text-6xl group-hover:scale-110 transition-transform duration-500">🪐</div>
           </div>
+          
           <h2 className="text-3xl font-bold text-white mb-2">{simulacion.titulo}</h2>
-          <p className="text-[#5b3cff] font-medium mb-6">por {simulacion.autor}</p>
-          {/* ¡NUEVO!: Tarjetas de Likes y Fecha */}
-          <div className="flex gap-3 mb-6">
+          <p className="text-[#5b3cff] font-medium mb-4">por {simulacion.autor}</p>
+
+          {/* Tarjetas de Likes, Fecha y DESCARGAS */}
+          <div className="flex gap-3 mb-6 flex-wrap">
             <div className="bg-[#1a1f35] border border-white/5 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm text-gray-300">
               <span className="text-red-400">❤️</span> {simulacion.likes}
+            </div>
+            {/* ¡NUEVO!: Badge de Descargas */}
+            <div className="bg-[#1a1f35] border border-white/5 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm text-gray-300">
+              <span className="text-[#5b3cff]">📥</span> {simulacion.descargas || 0}
             </div>
             <div className="bg-[#1a1f35] border border-white/5 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm text-gray-300">
               <span>📅</span> {formatearFecha(simulacion.fecha_publicacion)}
             </div>
           </div>
+
           <div className="flex-grow">
             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Notas del Creador</h3>
             <div className="bg-[#1a1f35] border border-white/5 p-5 rounded-xl text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
-              {simulacion.descripcion || <span className="text-gray-500 italic">Sin parámetros .</span>}
+              {simulacion.descripcion || <span className="text-gray-500 italic">Sin parámetros adicionales.</span>}
             </div>
           </div>
-          <button className="w-full bg-[#5b3cff] hover:bg-[#4a2eec] text-white font-bold py-4 rounded-xl mt-6 transition">
-            📥 Descargar Sistema
+          
+          {}
+          <button 
+            onClick={manejarDescarga}
+            className="w-full bg-[#5b3cff] hover:bg-[#4a2eec] text-white font-bold py-4 rounded-xl mt-6 transition flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(91,60,255,0.3)]"
+          >
+            <span>📥</span> Descargar Sistema
           </button>
         </div>
-
         {/* COLUMNA DERECHA (Chat) */}
         <div className="w-full md:w-1/2 bg-[#0f1322] flex flex-col h-full">
           

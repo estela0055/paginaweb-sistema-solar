@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import UploadModal from './UploadModal';
 import LoginModal from './LoginModal';
 import SimulationModal from './SimulationModal';
+
 function Community({ usuario, setPagina, onLoginExitoso, onVolver }) {
   const [simulaciones, setSimulaciones] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -16,8 +17,9 @@ function Community({ usuario, setPagina, onLoginExitoso, onVolver }) {
   const [modalLoginAbierto, setModalLoginAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [filtroActivo, setFiltroActivo] = useState('recientes'); 
-const [modalSimulacionAbierto, setModalSimulacionAbierto] = useState(false);
+  const [modalSimulacionAbierto, setModalSimulacionAbierto] = useState(false);
   const [simulacionSeleccionada, setSimulacionSeleccionada] = useState(null);
+
   useEffect(() => {
     const obtenerDatos = async () => {
       try {
@@ -78,7 +80,6 @@ const [modalSimulacionAbierto, setModalSimulacionAbierto] = useState(false);
 
   // Eliminación de una simulación en el backend y actualización del estado
   const manejarBorrado = async (simulacionId) => {
-    // Verificación de intención de borrado del usuario
     if (!window.confirm("¿Está seguro de que desea eliminar esta simulación? Esta acción no se puede deshacer.")) {
       return; 
     }
@@ -91,7 +92,7 @@ const [modalSimulacionAbierto, setModalSimulacionAbierto] = useState(false);
       });
 
       if (respuesta.ok) {
-        // Actualización del estado local excluyendo el registro eliminado
+        // Actualización del estado local excluyendo el registro eliminado al instante
         setSimulaciones(simulaciones.filter(sim => sim.id !== simulacionId));
       } else {
         const datos = await respuesta.json();
@@ -157,7 +158,6 @@ const [modalSimulacionAbierto, setModalSimulacionAbierto] = useState(false);
           />
         </div>
         
-        {/* Renderizado condicional del filtro de simulaciones propias */}
         {usuario && (
           <button 
             onClick={() => setFiltroActivo('propias')}
@@ -216,18 +216,17 @@ const [modalSimulacionAbierto, setModalSimulacionAbierto] = useState(false);
         /* Renderizado de la cuadrícula de simulaciones */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {simulacionesProcesadas.map((sim) => {
-            // Verificación de autoría para renderizado condicional de opciones
-            const esMio = usuario && sim.autor === usuario.nombre;
+            const esMio = usuario && sim.usuario_id === usuario.id; // Corregido el mapeo de autoría por ID que es más seguro
 
             return (
             <div key={sim.id}
-            onClick={() => {
+              onClick={() => {
                 setSimulacionSeleccionada(sim);
                 setModalSimulacionAbierto(true);
               }}
-               className="bg-[#161b2e] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group shadow-lg relative overflow-hidden">
+              className="bg-[#161b2e] border border-white/5 rounded-xl p-5 hover:border-white/10 transition group shadow-lg relative overflow-hidden cursor-pointer"
+            >
               
-              {/* Etiqueta visual indicadora de autoría */}
               {esMio && (
                 <div className="absolute top-0 right-0 bg-[#5b3cff] text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg shadow-md z-10">
                   TUYA
@@ -246,7 +245,6 @@ const [modalSimulacionAbierto, setModalSimulacionAbierto] = useState(false);
               <h3 className="font-bold text-lg mb-1 pr-8">{sim.titulo}</h3>
               <p className="text-sm text-gray-400 mb-4">por <span className="text-[#5b3cff] font-medium">{sim.autor}</span></p>
               
-              {/* Contenedor de estadísticas y metadata */}
               <div className="flex justify-between items-end text-xs text-gray-500 mb-4 pt-4 border-t border-white/5">
                 <div className="flex flex-col gap-1.5">
                   <span className="flex items-center gap-1.5 text-[#ff5722]">♡ {sim.likes} likes</span>
@@ -255,14 +253,18 @@ const [modalSimulacionAbierto, setModalSimulacionAbierto] = useState(false);
               </div>
 
               <div className="flex gap-2">
-                <button className="flex-grow bg-[#4f39f6] hover:bg-[#402de6] transition py-2 rounded-lg font-semibold flex items-center justify-center gap-2">
+                {/* ¡Arreglado!: Botón de descarga directa desde la tarjeta exterior */}
+                <button 
+                  onClick={(e) => { e.stopPropagation(); window.open(sim.archivo_url, '_blank'); }}
+                  className="flex-grow bg-[#4f39f6] hover:bg-[#402de6] transition py-2 rounded-lg font-semibold flex items-center justify-center gap-2"
+                >
                   <span>📥</span> Descargar
                 </button>
                 
-                {/* Control de eliminación (renderizado condicional para el autor) */}
+                {/* ¡Arreglado!: Añadido el parámetro (e) en la flecha para que funcione el borrado */}
                 {esMio && (
                   <button 
-                    onClick={() =>{ e.stopPropagation(); manejarBorrado(sim.id); }}
+                    onClick={(e) => { e.stopPropagation(); manejarBorrado(sim.id); }}
                     className="p-2.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition text-sm font-semibold"
                     title="Eliminar simulación"
                   >
@@ -270,8 +272,9 @@ const [modalSimulacionAbierto, setModalSimulacionAbierto] = useState(false);
                   </button>
                 )}
 
+                {/* ¡Arreglado!: Llamaba a borrar en lugar de a manejarClickLike */}
                 <button 
-                  onClick={() =>{ e.stopPropagation(); manejarBorrado(sim.id); }}
+                  onClick={(e) => { e.stopPropagation(); manejarClickLike(sim.id); }}
                   className={`p-2.5 rounded-lg border transition ${
                     sim.has_liked 
                       ? 'bg-red-500/10 border-red-500/50 text-red-500' 
@@ -293,7 +296,7 @@ const [modalSimulacionAbierto, setModalSimulacionAbierto] = useState(false);
         usuario={usuario} 
       />
       <LoginModal isOpen={modalLoginAbierto} onClose={() => setModalLoginAbierto(false)} onIrRegistro={() => setPagina('registro')} onLoginExitoso={onLoginExitoso} />
-    <SimulationModal 
+      <SimulationModal 
         isOpen={modalSimulacionAbierto} 
         onClose={() => setModalSimulacionAbierto(false)} 
         simulacion={simulacionSeleccionada}

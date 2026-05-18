@@ -195,6 +195,78 @@ app.put('/api/usuarios/actualizar', async (req, res) => {
     res.status(500).json({ error: 'Error interno al guardar los datos.' });
   }
 });
+
+// Endpoint para subir o actualizar la foto de perfil del usuario
+app.put('/api/usuarios/foto-perfil', upload.single('imagen'), async (req, res) => {
+  try {
+    const { usuarioId } = req.body;
+    const archivo = req.file; 
+
+    if (!usuarioId || !archivo) {
+      return res.status(400).json({ error: 'Faltan datos o imagen.' });
+    }
+    if (!archivo.mimetype.startsWith('image/')) {
+      return res.status(400).json({ error: 'El archivo debe ser una imagen.' });
+    }
+
+    // 1. LIMPIEZA: Buscar y borrar la foto antigua en Cloudflare R2
+    const busquedaVieja = await pool.query('SELECT foto_perfil_url FROM usuarios WHERE id = $1', [usuarioId]);
+    const urlAntigua = busquedaVieja.rows[0]?.foto_perfil_url;
+
+    if (urlAntigua) {
+      // Sacamos el nombre exacto del archivo (ej: avatar-1-12345.png)
+      const urlParte = urlAntigua.split('/');
+      const nombreArchivoAntiguo = urlParte[urlParte.length - 1];
+
+      try {
+        await s3Client.send(new DeleteObjectCommand({
+          Bucket: process.env.R2_BUCKET_NAME,
+          Key: nombreArchivoAntiguo
+        }));
+        console.log(`🗑️ Foto antigua [${nombreArchivoAntiguo}] borrada de R2.`);
+      } catch (errS3) {
+        console.error('⚠️ Error al borrar foto antigua de R2:', errS3);
+      }
+    }
+
+    // 2. SUBIR LA FOTO NUEVA
+    const extension = archivo.originalname.split('.').pop();
+    const nombreUnico = `avatar-${usuarioId}-${Date.now()}.${extension}`;
+
+    const parametrosSubida = {
+      Bucket: process.env.R2_BUCKET_NAME,
+      Key: nombreUnico,
+      Body: archivo.buffer,
+      ContentType: archivo.mimetype,
+    };
+
+    await s3Client.send(new PutObjectCommand(parametrosSubida));
+    const urlPublicaFoto = `${process.env.R2_PUBLIC_URL}/${nombreUnico}`;
+
+    // 3. ACTUALIZAR LA BASE DE DATOS
+    const resultado = await pool.query(
+      'UPDATE usuarios SET foto_perfil_url = $1 WHERE id = $2 RETURNING correo_electronico, nombre_usuario, pronombres',
+      [urlPublicaFoto, usuarioId]
+    );
+    const usuarioActualizado = resultado.rows[0];
+
+    res.status(200).json({
+      mensaje: '¡Foto de perfil actualizada con éxito!',
+      fotoPerfilUrl: urlPublicaFoto,
+      usuario: {
+        id: usuarioId,
+        nombre: usuarioActualizado.nombre_usuario,
+        correo: usuarioActualizado.correo_electronico,
+        pronombres: usuarioActualizado.pronombres,
+        fotoPerfilUrl: urlPublicaFoto
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al subir la foto de perfil:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
 // Endpoint GET para obtener todos los comentarios (padres e hijos)
 app.get('/api/simulaciones/:id/comentarios', async (req, res) => {
   const simulacionId = req.params.id;
@@ -271,7 +343,25 @@ app.delete('/api/comentarios/:id', async (req, res) => {
     res.status(500).send(err.message);
   }
 });
+// Endpoint POST para registrar una descarga nueva
+app.post('/api/simulaciones/:id/descarga', async (req, res) => {
+  const simulacionId = req.params.id;
 
+  try {
+    const resultado = await pool.query(
+      'UPDATE simulaciones SET descargas = descargas + 1 WHERE id = $1 RETURNING descargas',
+      [simulacionId]
+    );
+
+    res.status(200).json({ 
+      mensaje: 'Descarga registrada', 
+      descargasActuales: resultado.rows[0].descargas 
+    });
+  } catch (error) {
+    console.error('Error al registrar la descarga:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
 // Esconder/Mostrar comentario (Solo el creador del sistema)
 app.patch('/api/comentarios/:id/esconder', async (req, res) => {
   const { id } = req.params;
