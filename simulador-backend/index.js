@@ -5,7 +5,10 @@ const { Pool } = require('pg');
 require('dotenv').config(); // Carga de variables de entorno
 const multer = require('multer');
 const { S3Client, PutObjectCommand, DeleteObjectCommand} = require('@aws-sdk/client-s3');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secreto_sistema_solar_2026';
 // Configuración del cliente S3 para conexión con Cloudflare R2
 const s3Client = new S3Client({
   region: "auto",
@@ -64,7 +67,7 @@ app.get('/api/simulaciones', async (req, res) => {
 });
 
 
-// Ruta para registrar un nuevo usuario
+// Ruta para registrar un nuevo usuario (CORREGIDA)
 app.post('/api/registro', async (req, res) => {
   const { usuario, correo, contrasena } = req.body;
   try {
@@ -83,9 +86,14 @@ app.post('/api/registro', async (req, res) => {
       }
     }
 
+    // 1. Encriptamos
+    const salt = await bcrypt.genSalt(10); 
+    const contrasenaHasheada = await bcrypt.hash(contrasena, salt);
+
+    // 2. ¡Arreglado!: Guardamos 'contrasenaHasheada' en vez de la plana
     await pool.query(
       'INSERT INTO usuarios (nombre_usuario, correo_electronico, contrasena) VALUES ($1, $2, $3)',
-      [usuario, correo, contrasena]
+      [usuario, correo, contrasenaHasheada]
     );
     res.status(201).json({ mensaje: '¡Cuenta creada con éxito!' });
 
@@ -95,7 +103,7 @@ app.post('/api/registro', async (req, res) => {
   }
 });
 
-// Ruta para Iniciar Sesión
+// Ruta para Iniciar Sesión (CORREGIDA)
 app.post('/api/login', async (req, res) => {
   const { usuario, contrasena } = req.body;
   try {
@@ -110,12 +118,24 @@ app.post('/api/login', async (req, res) => {
 
     const usuarioEncontrado = busqueda.rows[0];
     
-    if (usuarioEncontrado.contrasena !== contrasena) {
+    // 1. ¡Arreglado!: Comparamos usando bcrypt
+    const contrasenaValida = await bcrypt.compare(contrasena, usuarioEncontrado.contrasena);
+
+    if (!contrasenaValida) {
       return res.status(401).json({ error: 'Contraseña incorrecta.' });
     }
 
+    // 2. Generamos el Token
+    const token = jwt.sign(
+      { id: usuarioEncontrado.id, nombre: usuarioEncontrado.nombre_usuario },
+      JWT_SECRET,
+      { expiresIn: '7d' } 
+    );
+
+    // 3. ¡Arreglado!: Enviamos el token de vuelta a React
     res.status(200).json({ 
       mensaje: '¡Inicio de sesión exitoso!',
+      token: token, // <-- Faltaba esto
       usuario: {
         id: usuarioEncontrado.id,
         nombre: usuarioEncontrado.nombre_usuario,
@@ -128,13 +148,11 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ error: 'Hubo un problema interno en el servidor.' });
   }
 });
-// Endpoint POST para actualización de perfil de usuario
+// Endpoint PUT para actualización de perfil de usuario 
 app.put('/api/usuarios/actualizar', async (req, res) => {
-  // Desestructuración del payload (cuerpo JSON de la petición)
   const { id, nombre, pronombres, contrasenaActual, nuevaContrasena } = req.body;
 
   try {
-    // Comprobación de existencia del registro de usuario objetivo
     const busqueda = await pool.query('SELECT * FROM usuarios WHERE id = $1', [id]);
     
     if (busqueda.rows.length === 0) {
@@ -144,21 +162,24 @@ app.put('/api/usuarios/actualizar', async (req, res) => {
     const usuarioDB = busqueda.rows[0];
     let contrasenaFinal = usuarioDB.contrasena;
 
-    // Validación de seguridad para el cambio de credenciales de acceso
+    // Si el usuario quiere cambiar la contraseña...
     if (nuevaContrasena) {
-      if (contrasenaActual !== usuarioDB.contrasena) {
+      // 1. ¡Arreglado!: Validamos la contraseña vieja usando bcrypt
+      const contraseñaCorrecta = await bcrypt.compare(contrasenaActual, usuarioDB.contrasena);
+      if (!contraseñaCorrecta) {
         return res.status(401).json({ error: 'La contraseña actual no es correcta.' });
       }
-      contrasenaFinal = nuevaContrasena;
+      
+      // 2. ¡Arreglado!: Encriptamos la nueva contraseña antes de guardarla
+      const salt = await bcrypt.genSalt(10);
+      contrasenaFinal = await bcrypt.hash(nuevaContrasena, salt);
     }
 
-    // Ejecución de querie SQL para actualización de los datos
     await pool.query(
       'UPDATE usuarios SET nombre_usuario = $1, pronombres = $2, contrasena = $3 WHERE id = $4',
       [nombre, pronombres, contrasenaFinal, id]
     );
 
-    // Devolución correcta con HTTP Status 200 y JSON actualizados
     res.status(200).json({ 
       mensaje: '¡Datos actualizados correctamente!',
       usuario: {
@@ -174,7 +195,6 @@ app.put('/api/usuarios/actualizar', async (req, res) => {
     res.status(500).json({ error: 'Error interno al guardar los datos.' });
   }
 });
-
 // Endpoint GET para obtener todos los comentarios (padres e hijos)
 app.get('/api/simulaciones/:id/comentarios', async (req, res) => {
   const simulacionId = req.params.id;
