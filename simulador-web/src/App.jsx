@@ -134,9 +134,15 @@ if (paginaActiva === 'acerca') {
             <span></span> Simulaciones
           </button>
          <button onClick={() => setPaginaActiva('acerca')} className="hover:text-gray-300 transition">Acerca de</button>
-          <button className="bg-[#5b3cff] hover:bg-[#4a2eec] text-white px-5 py-2.5 rounded-lg flex items-center gap-2 transition font-semibold">
+          <a 
+            href="https://pub-169c62948511474f857e32ef7d0456a0.r2.dev/SistemaSolarInteractivo.zip" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            download
+            className="bg-[#5b3cff] hover:bg-[#4a2eec] text-white px-5 py-2.5 rounded-lg flex items-center gap-2 transition font-semibold"
+          >
             <span></span> Descargar App
-          </button>
+          </a>
         </div>
       </nav>
 
@@ -152,9 +158,15 @@ if (paginaActiva === 'acerca') {
           Diseña sistemas solares, experimenta con la gravedad y descubre las leyes de la física
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
-          <button className="bg-[#5b3cff] hover:bg-[#4a2eec] text-white px-8 py-3.5 rounded-lg font-semibold flex items-center justify-center gap-2 transition">
+          <a 
+            href="https://pub-169c62948511474f857e32ef7d0456a0.r2.dev/SistemaSolarInteractivo.zip" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            download
+            className="bg-[#5b3cff] hover:bg-[#4a2eec] text-white px-8 py-3.5 rounded-lg font-semibold flex items-center justify-center gap-2 transition"
+          >
             <span></span> Descargar Ahora
-          </button>
+          </a>
           <button onClick={() => setPaginaActiva('comunidad')} className="bg-transparent border border-white/20 hover:bg-white/5 text-white px-8 py-3.5 rounded-lg font-semibold flex items-center justify-center gap-2 transition">
             <span></span> Explorar Simulaciones
           </button>

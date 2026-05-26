@@ -263,7 +263,7 @@ const manejarDescarga = async () => {
 
           <div className="flex-grow p-6 overflow-y-auto custom-scrollbar">
             {cargandoComentarios ? (
-              <div className="text-center py-10 text-gray-500 animate-pulse">Sintonizando...</div>
+              <div className="text-center py-10 text-gray-500 animate-pulse">Cargando...</div>
             ) : comentarios.filter(c => !c.es_escondido || mostrarEscondidos).length === 0 ? (
               <div className="text-center py-20 opacity-50"><span className="text-4xl mb-3">🛰️</span><p className="text-gray-400">Sin comentarios.</p></div>
             ) : (
